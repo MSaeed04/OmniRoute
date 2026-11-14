@@ -303,7 +303,7 @@ fastsatte verdiene sendes til motorens eksisterende `config.modePack`- / `config
 
 ## Alle rutingstrategier
 
-OmniRoute kombinasjonsmotor støtter** 20 rutingstrategier** (erklært i `src/shared/constants/routingStrategies.ts` → `ROUTING_STRATEGY_VALUES`). Selve Auto Combo-motoren er utsatt under `auto` strategien; de andre er tilgjengelige for vedvarende kombinasjoner.
+OmniRoute kombinasjonsmotor støtter** 21 rutingstrategier** (erklært i `src/shared/constants/routingStrategies.ts` → `ROUTING_STRATEGY_VALUES`). Selve Auto Combo-motoren er utsatt under `auto` strategien; de andre er tilgjengelige for vedvarende kombinasjoner.
 
 | Strategi            | Beskrivelse                                                                                                                                                                                             |
 | :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -318,6 +318,7 @@ OmniRoute kombinasjonsmotor støtter** 20 rutingstrategier** (erklært i `src/sh
 | `cost-optimized`    | Minimer $ per forespørsel gitt katalogpriser                                                                                                                                                            |
 | `reset-aware` ⭐    | Prioriter etter kvote tilbakestillingstid — korte tilbakestillingsvinduer rangert høyere                                                                                                                |
 | `reset-window`      | Foretrekk mål hvis kvotevindu tilbakestilles snarest                                                                                                                                                    |
+| `expiry-first`      | Bruk kontoen hvis kvote ellers ville utløpt ubrukt først — den høyeste gjenværende med nærmeste tilbakestillingsfrist går først                                                                         |
 | `headroom`          | Velg målet med mest gjenværende kvotefrihet                                                                                                                                                             |
 | `quota-weighted`    | Hopp over oppbrukte kontoer, og velg deretter blant resten i forhold til gjenværende kvote delt på last under flyet; eksisterende samtaler forblir festet                                               |
 | `strict-random`     | Tilfeldig uten deduplisering av gjentakelser                                                                                                                                                            |
@@ -344,6 +345,20 @@ For streng rotasjon bruk `round-robin`; like vekter på `weighted` gir statistis
 ### Agentisk rørledningsmodus
 
 En `pipeline` kombinasjon med minst to modeller kan velge planner/executor -ruting med `config.agenticOrchestration.enabled`. Det første målet eier planlegging og endelige svar; det andre målet sender ut klientinnbygde verktøykall. OmniRoute oppdager verktøyresultatfortsettelser fra forespørselsprotokollen, spør planleggeren om en ny verktøyrunde er nødvendig, og gjør dynamisk enten utføreren eller planleggeren til det klientvendte siste trinnet.
+
+Valgfri `config.agenticOrchestration.contextCompaction` bruker et separat nyttelastbudsjett før hver planlegger- eller utførende sending. Aktiver det eksplisitt:
+
+```json
+{
+  "enabled": true,
+  "defaultMaxChars": 400000,
+  "targetRatio": 0.72,
+  "toolResultMaxChars": 24000,
+  "modelMaxChars": { "provider/planner": 175000, "provider/executor": 300000 }
+}
+```
+
+Dette er serialiserte JSON tegnbudsjetter valgt av operatøren, ikke token-kontekstvinduer eller garanterte oppstrømsgrenser. Nøyaktig modell IDs overstyrer standarden. Over terskelen fjerner komprimering identiske verktøydefinisjoner, trimmer overdimensjonerte verktøybevis med et sammendrag og fjerner gamle komplette historiegrupper mot målforholdet. Den beholder system/developer -instruksjoner, den siste brukerforespørselen, den siste verktøyrunden inkludert parallell calls/results og Gemini ledende rutinginstruksjon. Instruksjoner og verktøyinnstillinger på toppnivå er bevart. En utelatelsesmarkør registrerer fjernet historikk; dette er deterministisk trimming, ikke en semantisk oppsummering. Hvis den festede konteksten fortsatt overskrider budsjettet, returnerer forespørselen 413 før du kontakter modellen. Med komprimering deaktivert eller under terskelen går forespørselen gjennom uendret.
 
 På fortsettelse av verktøyresultater, stopper OmniRoute også kjøringen når to påfølgende fullførte runder gjentar de samme verktøykallene med uendrede resultater, eller når hvert eksplisitt markert resultat i to påfølgende runder mislyktes. Endrede resultater tillater gjentatte anrop (for eksempel polling). Vakten tilbakestiller på en ny brukerforespørsel, grupperer parallelle samtaler i én runde og støtter Anthropic, Chat-fullføringer, Svar og Gemini historier. Planleggeren får begrunnelsen og eier det endelige svaret selv om den ber om en ny verktøyrunde.
 
@@ -831,39 +846,39 @@ Se [`docs/guides/TIERS.md`](../guides/TIERS.md) for nivådefinisjoner og klassif
 
 ## Testing og dekning
 
-### Deterministisk matrise for rutingsbeslutninger (`npm run test:combo:matrix`)
+### Deterministisk rutebeslutningsmatrise (`npm run test:combo:matrix`)
 
-`tests/integration/combo-matrix/*.test.ts` beviser rutings**beslutningen** for alle de 19 offentlige strategiene ende-til-ende gjennom den virkelige kombinasjonsflyten med en simulert oppstrømsleverandør. Dekningen inkluderer:
+`tests/integration/combo-matrix/*.test.ts` beviser rutingen** avgjørelse** av alle 21 offentlige strategier ende-til-ende gjennom den virkelige kombinasjonsrørledningen med en hånet oppstrøms. Dekningen inkluderer:
 
-- Alle de 19 `ROUTING_STRATEGY_VALUES`-strategiene (ordnet, vektet, kostnad, kontekst, fusjon, …).
-- `quota-share` (intern) ende-til-ende: DRR-rettferdighet + nedprioritering ved metning via det virkelige `selectQuotaShareTarget`-grensesnittet (`registerQuotaFetcher` / `setLKGP` / `__setHeadroomSaturationFetcherForTests`).
-- `context-relay`-dekning for universell overlevering på tvers av alle antall mål.
+- Alle 21 `ROUTING_STRATEGY_VALUES` -strategier (ordnet, vektet, kostnad, kontekst, fusjon, …).
+- `quota-share` (intern) ende-til-ende: DRR rettferdighet + metningsdeprioritering via den virkelige `selectQuotaShareTarget` sømmen (`registerQuotaFetcher` / `setLKGP` / `__setHeadroomSaturationFetcherForTests`).
+- `context-relay` universell overleveringsdekning på tvers av hver måltelling.
 
-Denne testpakken kjøres i CI (`test:integration`-jobben) med `--test-concurrency=1` og `--test-force-exit`, slik at den er deterministisk og ikke krever aktive tilgangsopplysninger.
+Denne suiten kjører i CI (`test:integration` jobb) med `--test-concurrency=1` og `--test-force-exit`, så den er deterministisk og krever ikke live-legitimasjon.
 
-### Betinget direkte røykprøve (IKKE i CI — virkelige leverandører)
+### Gated live smoke (NOT i CI — ekte leverandører)
 
-| Kommando                               | Hva den gjør                                                                                             |
-| :------------------------------------- | :------------------------------------------------------------------------------------------------------- |
-| `npm run test:combo:live`              | Virkelig ruting i prosessen med `RUN_COMBO_LIVE=1`; tar et øyeblikksbilde av en aktiv OmniRoute-database |
-| `npm run test:combo:live:vps`          | HTTP-kall mot en aktiv OmniRoute-server (angi `COMBO_LIVE_BASE_URL`)                                     |
-| `npm run test:combo:live:vps:failover` | Det samme, med tilsiktede failover-scenarioer                                                            |
+| Kommando                               | Hva den gjør                                                                            |
+| :------------------------------------- | :-------------------------------------------------------------------------------------- |
+| `npm run test:combo:live`              | Reell ruting under prosess med `RUN_COMBO_LIVE=1`; øyeblikksbilder en live OmniRoute DB |
+| `npm run test:combo:live:vps`          | HTTP kaller mot en live OmniRoute server (sett `COMBO_LIVE_BASE_URL`)                   |
+| `npm run test:combo:live:vps:failover` | Samme med bevisste failover-scenarier                                                   |
 
-Disse røykprøvene tester den virkelige kommunikasjonsflyten (kombinasjon → leverandør → fullføring). De er med hensikt utelatt fra CI fordi de krever aktive tilgangsopplysninger og VPS-tilgang.
+Disse røyktestene utøver den virkelige ledningsbanen (combo → provider → completion). De er med vilje ekskludert fra CI fordi de krever live-legitimasjon og VPS tilgang.
 
 ---
 
 ## Filer
 
-| Fil                                                       | Formål                                                                                                               |
-| :-------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------- |
-| `open-sse/services/autoCombo/scoring.ts`                  | 16-faktors poengfunksjon, `DEFAULT_WEIGHTS`, poolnormalisering                                                       |
-| `open-sse/services/autoCombo/taskFitness.ts`              | Oppslag for modell × oppgaveegnethet                                                                                 |
-| `open-sse/services/autoCombo/engine.ts`                   | Utvalgslogikk, banditt, budsjettgrense                                                                               |
-| `open-sse/services/autoCombo/selfHealing.ts`              | Ekskludering, sonderinger, hendelsesmodus                                                                            |
-| `open-sse/services/autoCombo/modePacks.ts`                | 6 vektprofiler (rask levering, kostnadsbesparelse, kvalitet først, frakoblet-vennlig, pålitelighet først, kaosmodus) |
-| `open-sse/services/autoCombo/autoPrefix.ts`               | Parser for `auto/`-prefiks + 6 varianter                                                                             |
-| `open-sse/services/autoCombo/virtualFactory.ts`           | Bygger `AutoComboConfig` i minnet fra aktive tilkoblinger                                                            |
-| `open-sse/services/autoCombo/providerRegistryAccessor.ts` | Testkrok for etterligning av leverandørregisteret                                                                    |
-| `src/shared/constants/routingStrategies.ts`               | `ROUTING_STRATEGY_VALUES` (20 strategier)                                                                            |
-| `src/sse/handlers/chat.ts`                                | Integrasjon: kortslutning for auto-prefiks                                                                           |
+| Fil                                                       | Hensikt                                                                                                          |
+| :-------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------- |
+| `open-sse/services/autoCombo/scoring.ts`                  | 16-faktor poengfunksjon, `DEFAULT_WEIGHTS`, bassengnorm                                                          |
+| `open-sse/services/autoCombo/taskFitness.ts`              | Modell × task fitness lookup                                                                                     |
+| `open-sse/services/autoCombo/engine.ts`                   | Utvalgslogikk, banditt, budsjetttak                                                                              |
+| `open-sse/services/autoCombo/selfHealing.ts`              | Ekskludering, sonder, hendelsesmodus                                                                             |
+| `open-sse/services/autoCombo/modePacks.ts`                | 6 vektprofiler (frakt-rask, kostnadsbesparende, kvalitet først, offline-vennlig, pålitelighet-først, kaos-modus) |
+| `open-sse/services/autoCombo/autoPrefix.ts`               | `auto/` prefiks parser + 6 varianter                                                                             |
+| `open-sse/services/autoCombo/virtualFactory.ts`           | Bygger i minnet `AutoComboConfig` fra live-tilkoblinger                                                          |
+| `open-sse/services/autoCombo/providerRegistryAccessor.ts` | Testkrok for hånlig leverandørregister                                                                           |
+| `src/shared/constants/routingStrategies.ts`               | `ROUTING_STRATEGY_VALUES` (21 strategier)                                                                        |
+| `src/sse/handlers/chat.ts`                                | Integrasjon: auto-prefiks kortslutning                                                                           |

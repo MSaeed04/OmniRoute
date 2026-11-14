@@ -300,7 +300,7 @@ warware suna shiga shigarwar `config.modePack` / `config.budgetCap` /
 
 ## Duk Dabarun Dabaru
 
-Injin combo na OmniRoute yana goyan bayan** 20 dabaru dabaru** (an bayyana a cikin `src/shared/constants/routingStrategies.ts` → `ROUTING_STRATEGY_VALUES`). Injin Combo da kansa yana fallasa a ƙarƙashin dabarun `auto` ; sauran suna samuwa don dagewar combos.
+Injin combo na OmniRoute yana goyan bayan** 21 dabarun sarrafa hanya** (an bayyana a cikin `src/shared/constants/routingStrategies.ts` → `ROUTING_STRATEGY_VALUES`). Injin Combo da kansa yana fallasa a ƙarƙashin dabarun `auto` ; sauran suna samuwa don dagewar combos.
 
 | Dabarun             | Bayani                                                                                                                                                                                          |
 | :------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -315,10 +315,11 @@ Injin combo na OmniRoute yana goyan bayan** 20 dabaru dabaru** (an bayyana a cik
 | `cost-optimized`    | Rage $ kowane buƙatun da aka bayar da farashin kasida                                                                                                                                           |
 | `reset-aware` ⭐    | Ba da fifiko ta hanyar sake saitin lokaci — gajeriyar sake saiti windows matsayi mafi girma                                                                                                     |
 | `reset-window`      | Zaɓi maƙasudai waɗanda taga keɓaɓɓiyar ta sake saitawa da wuri                                                                                                                                  |
+| `expiry-first`      | Ku ciyar da asusun wanda adadin sa ba zai ƙare ba na farko — mafi girman ragowar tare da ƙarshen sake saiti mafi kusa zai fara farawa.                                                          |
 | `headroom`          | Zaɓi maƙasudi tare da mafi saura ɗakin ɗakin keɓaɓɓu                                                                                                                                            |
 | `quota-weighted`    | Tsallake asusun ajiyar da ya ƙare, sannan a zaɓi tsakanin sauran gwargwadon rabon ragowar da aka raba da lodin jirgin; tattaunawar data kasance tana daure                                      |
 | `strict-random`     | Bazuwar ba tare da raguwar maimaitawa ba                                                                                                                                                        |
-| `auto`              | Yi amfani da maƙirarin haɗakarwa ta atomatik (factor 16) —** shawarar**                                                                                                                         |
+| `auto`              | Yi amfani da maƙirarin haɗakarwa ta atomatik (factor factor) —** shawarar**                                                                                                                     |
 | `lkgp`              | Kyakkyawar Hanya ta Ƙarshe-Known-Kyakkyawan (hanyoyi zuwa ga mai bada nasara na ƙarshe, sannan ya koma ga ƙa'idodi)                                                                             |
 | `context-optimized` | Zaɓi manufa tare da mafi dacewa don girman mahallin halin yanzu                                                                                                                                 |
 | `cache-optimized`   | Sake tsara maƙasudi ta hanyar alaƙar cache da sauri — haɗin da ya fi dacewa ya riga ya riƙe wannan prefix ɗin buƙatun an fara gwadawa (`open-sse/services/combo/promptCacheAffinity.ts`, #8008) |
@@ -342,6 +343,20 @@ Don tsananin jujjuya amfani da `round-robin`; daidai ma'auni akan `weighted` sun
 
 Haɗin `pipeline` tare da aƙalla samfura biyu na iya fita zuwa hanyar planner/executor tare da `config.agenticOrchestration.enabled`. Makasudin farko yana da tsare-tsare da amsoshi na ƙarshe; manufa ta biyu tana fitar da kiran kayan aiki na abokin ciniki. OmniRoute yana gano ci gaba da sakamakon kayan aiki daga ƙa'idar buƙatar, ya tambayi mai tsara ko ana buƙatar wani zagaye na kayan aiki, kuma yana mai da ko dai mai zartarwa ko mai tsarawa matakin ƙarshe na fuskantar abokin ciniki.
 
+`config.agenticOrchestration.contextCompaction` na zaɓi yana aiki daban-daban kasafin kuɗin biya kafin kowane mai tsarawa ko mai zartarwa aika. Kunna shi a sarari:
+
+```json
+{
+  "enabled": true,
+  "defaultMaxChars": 400000,
+  "targetRatio": 0.72,
+  "toolResultMaxChars": 24000,
+  "modelMaxChars": { "provider/planner": 175000, "provider/executor": 300000 }
+}
+```
+
+Waɗannan su ne jerin kasafin kuɗin halin JSON da mai aiki ya zaɓa, ba alamar mahallin mahallin windows ko garantin iyakoki na sama ba. Daidaitaccen samfurin IDs ya soke tsohowar. Sama da bakin kofa, ƙaddamarwa yana kawar da ma'anar kayan aiki iri ɗaya, yana gyara manyan shaidun kayan aiki tare da narkar da su, kuma yana kawar da tsoffin rukunonin tarihi zuwa ga maƙasudin manufa. Yana riƙe umarnin system/developer, buƙatun mai amfani na baya-bayan nan, zagayen kayan aiki na ƙarshe gami da layi ɗaya calls/results, da jagorar jagorar hanyar Gemini. Ana adana umarnin matakin sama da saitunan kayan aiki. Alamar tsallake bayanan da aka cire tarihin; wannan yanke hukunci ne, ba taƙaitaccen ma'ana ba. Idan mahallin da aka liƙa har yanzu ya wuce kasafin kuɗi, buƙatar ta dawo 413 kafin tuntuɓar samfurin. Tare da naƙasasshen ƙaddamarwa ko ƙasa da bakin kofa buƙatun ya wuce ba canzawa.
+
 A ci gaba da sakamakon kayan aiki, OmniRoute kuma yana dakatar da aiwatarwa lokacin da zagaye biyu da aka kammala a jere suna maimaita kiran kayan aiki iri ɗaya tare da sakamakon da bai canza ba, ko kuma lokacin da kowane sakamako da aka yiwa alama a zagaye biyu jere ya gaza. Canje-canjen sakamako yana ba da izinin kira akai-akai (misali, zabe). Mai gadin yana sake saita sabon buƙatun mai amfani, ƙungiyoyi masu layi ɗaya suna kira zuwa zagaye ɗaya, kuma suna goyan bayan Anthropic, Ƙarshen Taɗi, Amsoshi da tarihin Gemini. Mai tsarawa yana karɓar dalili kuma ya mallaki amsar ƙarshe ko da ta nemi wani zagaye na kayan aiki.
 
 Ƙarin samfura bayan manufa ta biyu ana ba da odar madodin masu zartarwa. Amsar HTTP da ta gaza ko kuma keɓanta jigilar jigilar kayayyaki zuwa ga mai zartarwa na gaba, ɗauke da shawarar mai tsara iri ɗaya da kayan aikin ɗan ƙasa amma matakin mai aiwatar da kansa ya yi gaggawar warware haɗin gwiwa. An mayar da martanin nasara na farko ba canzawa, gami da yawo na SSE ; Ba za a iya sake gwada gazawar bayan rafi mai nasara ba a nan. Idan duk masu zartarwa sun gaza, za a dawo da gazawar ƙarshe. Abokin zubar da ciki yana dakatar da aikawa.
@@ -363,8 +378,8 @@ Mai aiwatarwa na iya aika kiraye-kiraye masu zaman kansu da yawa a cikin amsa ɗ
 An shirya zagaye-robin, ba buƙatu ɗaya-kowane-mataki ba:
 
 - `stickyRoundRobinLimit` (combo config, sa'an nan `comboStickyRoundRobinLimit`, sa'an nan `settings.stickyRoundRobinLimit`, tsoho** 3** ) yana kiyaye manufa iri ɗaya don nasarorin da yawa a jere kafin juyawa. Saita jujjuyawar haɗakarwa zuwa `1` don jujjuyawar buƙatu ɗaya. Editan haɗakarwa yana nuna ingantaccen ƙima da wane Layer ya fito.
-- `connectionAwareExpansion` (saitin combo, sannan saituna, tsoho** karya** ) yana faɗaɗa kowane mataki-matakin mai bayarwa zuwa kowane maƙasudin asusun kafin juyawa. Dabarun rukuni-B (fififi, ma'auni, zagaye-robin, bazuwar, p2c, mafi ƙarancin amfani, ingantaccen farashi, lkgp, cika-farko, tsauraran-bazuwar, ingantaccen mahallin mahallin, ingantaccen cache-ingantacciyar hanya, mahallin-relay, fusion, bututun mai) kiyaye matakin matakin samarwa har sai an kunna wannan. Editan haduwa yana fallasa gadon / kunnawa / kashewa; gado yana amfani da tsohowar duniya (kashe).
-- Sauƙaƙan wuri na cache (`promptCacheAffinityEnabled`, tsoho** gaskiya** ) yana sake yin odar haɗin haɗin gwiwa don haka maɓallan cache masu dacewa su tsaya akan asusu ɗaya. Yana ɗaukar fifiko akan zagaye-robin da jujjuya nauyi a kan matakan kowane-asusu da aka liƙa. Kashe shi a ƙarƙashin Saitunan → Combo Predefinicións idan kuna buƙatar juyawa mai ƙarfi. Babu jujjuyawar kowane-hada.
+- `connectionAwareExpansion` (saitin combo, sannan saituna, tsoho** karya** ) yana faɗaɗa kowane mataki-matakin mai bayarwa zuwa kowane maƙasudin asusun kafin juyawa. Dabarun rukuni-B (fififi, ma'auni, zagaye-robin, bazuwar, p2c, mafi ƙarancin amfani, ingantaccen farashi, lkgp, cika-farko, tsantsa-bazuwar, ingantaccen mahallin mahallin, ingantaccen cache-ingantacciyar mahallin, juzu'i, bututun mai) kiyaye matakin matakin samarwa har sai an kunna wannan. Editan haduwa yana fallasa gadon / kunnawa / kashewa; gado yana amfani da tsohowar duniya (kashe).
+- Sauƙaƙan wuri na cache (`promptCacheAffinityEnabled`, tsoho** gaskiya** ) yana sake yin odar haɗin haɗin gwiwa don haka maɓallan cache masu dacewa su tsaya akan asusu ɗaya. Yana ɗaukar fifiko akan zagaye-robin da jujjuya nauyi a kan matakan da aka liƙa kowane-asusu. Kashe shi a ƙarƙashin Saitunan → Combo Predefinicións idan kuna buƙatar jujjuyawa mai ƙarfi. Babu jujjuyawar kowane-hada.
 
 Don jujjuya asusu da yawa akan ƙira ɗaya, fi so** mataki ɗaya mai ƙarfi-asusu** ( `connectionId` mara komai , dukan tafkin) tare da iyakacin `1`, ba ukun `connectionId` s ba. Matakan da aka liƙa tare da alaƙa suna rugujewa akan asusu ɗaya ko da yayin da lissafin RR ya ci gaba.
 
@@ -827,47 +842,41 @@ Don fifita Tier 1 (biyan kuɗin rajista) sosai, ƙara nauyin `tierPriority`:
 
 Duba [`docs/guides/TIERS.md`](../guides/TIERS.md) don ma’anonin tier da rarrabuwar masu samarwa.
 
-## Gwaji da Faɗin Rufewa
+## Gwaji & Rufewa
 
-### Matrix ɗin yanke shawarar routing mai tabbataccen sakamako (`npm run test:combo:matrix`)
+### Matrix mai ƙayyadaddun ra'ayi (`npm run test:combo:matrix`)
 
-`tests/integration/combo-matrix/*.test.ts` yana tabbatar da **shawarar** routing ta dukkan dabarun
-jama'a guda 19 daga farko zuwa ƙarshe ta hanyar ainihin combo pipeline tare da upstream na kwaikwayo.
-Rufewar ta haɗa da:
+`tests/integration/combo-matrix/*.test.ts` ta tabbatar da hanya** yanke shawara** na dukkan dabarun jama'a 21 daga ƙarshe zuwa ƙarshe ta hanyar bututun haɗin gwiwa na gaske tare da izgili a sama. Rubutun ya ƙunshi:
 
-- Dukkan dabarun `ROUTING_STRATEGY_VALUES` guda 19 (ordered, weighted, cost, context, fusion, …).
-- `quota-share` (na ciki) daga farko zuwa ƙarshe: adalcin DRR + rage fifikon saturation ta hanyar
-  ainihin mashigar `selectQuotaShareTarget` (`registerQuotaFetcher` / `setLKGP` /
-  `__setHeadroomSaturationFetcherForTests`).
-- Rufewar universal-handoff ta `context-relay` a dukkan adadin targets.
+- Duk dabarun `ROUTING_STRATEGY_VALUES` 21 (an yi oda, ma'auni, farashi, mahallin, hadewa,…).
+- `quota-share` (na ciki) ƙarshen-zuwa-ƙarshe: DRR adalci + ƙaddamar da jikewar jikewa ta hanyar kabu na ainihin `selectQuotaShareTarget` (`registerQuotaFetcher` / `setLKGP` / `__setHeadroomSaturationFetcherForTests`).
+- `context-relay` ɗaukar hoto na duniya-hannu a cikin kowane ƙidayar manufa.
 
-Wannan rukunin gwaje-gwaje yana gudana a CI (aikin `test:integration`) tare da `--test-concurrency=1` da
-`--test-force-exit` domin ya kasance mai tabbataccen sakamako kuma baya buƙatar live credentials.
+Wannan rukunin yana gudana a cikin CI (aikin `test:integration` ) tare da `--test-concurrency=1` da `--test-force-exit` don haka yana da ƙayyadaddun ƙayyadaddun bayanai kuma baya buƙatar takaddun shaida.
 
-### Gated live smoke (BA ya cikin CI — providers na gaske)
+### Gated hayaki mai rai (NOT a cikin CI — masu samar da gaske)
 
-| Command                                | Abin da yake yi                                                                                        |
-| :------------------------------------- | :----------------------------------------------------------------------------------------------------- |
-| `npm run test:combo:live`              | Routing na gaske a cikin process tare da `RUN_COMBO_LIVE=1`; yana ɗaukar snapshot na live OmniRoute DB |
-| `npm run test:combo:live:vps`          | Kiran HTTP zuwa live OmniRoute server (saita `COMBO_LIVE_BASE_URL`)                                    |
-| `npm run test:combo:live:vps:failover` | Haka nan, tare da yanayin failover da aka shirya da gangan                                             |
+| Umurni                                 | Abin da yake yi                                                                |
+| :------------------------------------- | :----------------------------------------------------------------------------- |
+| `npm run test:combo:live`              | In-prouting na gaske tare da `RUN_COMBO_LIVE=1`; hotuna kai tsaye OmniRoute DB |
+| `npm run test:combo:live:vps`          | HTTP kira akan sabar OmniRoute kai tsaye (saitin `COMBO_LIVE_BASE_URL`)        |
+| `npm run test:combo:live:vps:failover` | Haka, tare da gangan gazawar al'amuran                                         |
 
-Waɗannan smoke tests suna gwada ainihin wire path (combo → provider → completion). An
-cire su daga CI da gangan saboda suna buƙatar live credentials da damar shiga VPS.
+Waɗannan gwaje-gwajen hayaki suna aiki da ainihin hanyar waya (combo → mai bada → kammalawa). An cire su da gangan daga CI saboda suna buƙatar takaddun shaidar rayuwa da samun damar VPS.
 
 ---
 
 ## Fayiloli
 
-| Fayil                                                     | Manufa                                                                                                         |
-| :-------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------- |
-| `open-sse/services/autoCombo/scoring.ts`                  | Aikin ƙididdigar ma'auni 16, `DEFAULT_WEIGHTS`, da daidaita rukunin                                            |
-| `open-sse/services/autoCombo/taskFitness.ts`              | Binciken dacewar samfuri × aiki                                                                                |
-| `open-sse/services/autoCombo/engine.ts`                   | Dabarun zaɓi, bandit, da iyakar kasafin kuɗi                                                                   |
-| `open-sse/services/autoCombo/selfHealing.ts`              | Warewa, gwaje-gwajen bincike, da yanayin aukuwar matsala                                                       |
-| `open-sse/services/autoCombo/modePacks.ts`                | Bayanan ma'auni guda 6 (ship-fast, cost-saver, quality-first, offline-friendly, reliability-first, chaos-mode) |
-| `open-sse/services/autoCombo/autoPrefix.ts`               | Mai tantance prefix na `auto/` + nau'uka guda 6                                                                |
-| `open-sse/services/autoCombo/virtualFactory.ts`           | Yana gina `AutoComboConfig` na cikin ƙwaƙwalwa daga haɗin da ke aiki kai tsaye                                 |
-| `open-sse/services/autoCombo/providerRegistryAccessor.ts` | Mahadar gwaji don kwaikwayon rajistar masu samarwa                                                             |
-| `src/shared/constants/routingStrategies.ts`               | `ROUTING_STRATEGY_VALUES` (dabaru 20)                                                                          |
-| `src/sse/handlers/chat.ts`                                | Haɗawa: dakatarwar gajeriyar hanya ta auto-prefix                                                              |
+| Fayil                                                     | Manufar                                                                                                                       |
+| :-------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------- |
+| `open-sse/services/autoCombo/scoring.ts`                  | Ayyukan maki 16, `DEFAULT_WEIGHTS`, ka'idar tafkin                                                                            |
+| `open-sse/services/autoCombo/taskFitness.ts`              | Model × aikin duba dacewa                                                                                                     |
+| `open-sse/services/autoCombo/engine.ts`                   | Dabarun zaɓi, ɗan fashi, kasafin kuɗi                                                                                         |
+| `open-sse/services/autoCombo/selfHealing.ts`              | Keɓewa, bincike, yanayin aukuwa                                                                                               |
+| `open-sse/services/autoCombo/modePacks.ts`                | Bayanan martaba 6 (mai sauri-jigi, mai tanadin farashi, inganci-farko, sada zumuncin layi, aminci-na farko, yanayin hargitsi) |
+| `open-sse/services/autoCombo/autoPrefix.ts`               | `auto/` prefix parser + 6 bambance-bambancen karatu                                                                           |
+| `open-sse/services/autoCombo/virtualFactory.ts`           | Yana gina `AutoComboConfig` a cikin ƙwaƙwalwar ajiya daga haɗin kai                                                           |
+| `open-sse/services/autoCombo/providerRegistryAccessor.ts` | Gwajin ƙugiya don yin rajistar mai bada ba'a                                                                                  |
+| `src/shared/constants/routingStrategies.ts`               | `ROUTING_STRATEGY_VALUES` (21 dabarun)                                                                                        |
+| `src/sse/handlers/chat.ts`                                | Haɗin kai: auto-prefix short-circuit                                                                                          |
